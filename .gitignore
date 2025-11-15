@@ -1,0 +1,11 @@
+# Folder upload (jangan di-commit karena isinya file user)
+uploads/
+
+# Config database (opsional, kalau ga mau config.php ke-push)
+# config.php
+
+# File temporary
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

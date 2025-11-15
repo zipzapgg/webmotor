@@ -1,0 +1,158 @@
+<?php
+require_once "config.php";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['username'])) {
+    header('Content-Type: application/json');
+    
+    $username = trim($_POST["username"]);
+    $password = trim($_POST["password"]);
+
+    if (empty($username) || empty($password)) {
+        echo json_encode(['success' => false, 'message' => 'Username dan password tidak boleh kosong.']);
+        exit;
+    }
+    
+    if ($username === 'admin' && $password === 'admin123') {
+        $_SESSION["loggedin"] = true;
+        $_SESSION["id_user"] = 0;
+        $_SESSION["username"] = 'admin';
+        $_SESSION["nama_lengkap"] = 'Admin Utama';
+        $_SESSION["role"] = 'admin';
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    $sql = "SELECT id_user, username, password, nama_lengkap, role FROM user_admin WHERE username = ?";
+    if ($stmt = $conn->prepare($sql)) {
+        $stmt->bind_param("s", $username);
+        if ($stmt->execute()) {
+            $stmt->store_result();
+            if ($stmt->num_rows == 1) {
+                $stmt->bind_result($id, $username_db, $hashed_password, $nama_lengkap, $role);
+                if ($stmt->fetch()) {
+                    if (password_verify($password, $hashed_password)) {
+                        $_SESSION["loggedin"] = true;
+                        $_SESSION["id_user"] = $id;
+                        $_SESSION["username"] = $username_db;
+                        $_SESSION["nama_lengkap"] = $nama_lengkap;
+                        $_SESSION["role"] = $role;
+                        
+                        echo json_encode(['success' => true]);
+                        exit;
+                    }
+                }
+            }
+        }
+    }
+    
+    echo json_encode(['success' => false, 'message' => 'Username atau password salah.']);
+    exit;
+}
+
+if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+    redirect('index.php');
+}
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Rental Motor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link href="login-style.css" rel="stylesheet">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-brand">
+            <div class="brand-icon">
+                <i class="fas fa-motorcycle"></i>
+            </div>
+            <h1>Rental Motor</h1>
+            <p>Sistem Manajemen Penyewaan Motor</p>
+            
+            <div class="login-tip">
+                <strong>Login Admin:</strong>
+                Username: <code>admin</code><br>
+                Password: <code>admin123</code>
+            </div>
+        </div>
+        
+        <div class="login-form">
+            <div class="form-header">
+                <h2>Selamat Datang</h2>
+                <p>Silakan login untuk melanjutkan</p>
+            </div>
+            
+            <div id="error-alert" class="alert-danger"></div>
+            
+            <form id="loginForm" method="post">
+                <div class="form-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="username" id="username" class="form-control" placeholder="Username" required>
+                </div>
+                
+                <div class="form-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary" id="login-btn">
+                    <span class="loading-spinner" id="loading-spinner"></span>
+                    <span id="btn-text">Login</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            
+            <div class="register-link">
+                <p>Belum punya akun? <a href="register.php">Daftar di sini</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const loginBtn = document.getElementById('login-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('loading-spinner');
+            const errorAlert = document.getElementById('error-alert');
+            
+            loginBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btnText.textContent = 'Memproses...';
+            errorAlert.style.display = 'none';
+
+            const formData = new FormData(this);
+            fetch('login.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    btnText.textContent = 'Sukses!';
+                    window.location.href = 'index.php';
+                } else {
+                    errorAlert.textContent = data.message;
+                    errorAlert.style.display = 'block';
+                    loginBtn.disabled = false;
+                    spinner.style.display = 'none';
+                    btnText.textContent = 'Login';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                errorAlert.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                errorAlert.style.display = 'block';
+                loginBtn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Login';
+            });
+        });
+    </script>
+</body>
+</html>
