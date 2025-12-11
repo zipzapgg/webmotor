@@ -294,6 +294,11 @@ include 'header.php';
                 <td><?= format_rupiah($trans['total_bayar']) ?></td>
                 <td>
                     <div class="form-actions" style="margin: 0;">
+                        <a href="edit_transaction.php?id=<?= $trans['id_transaksi'] ?>" 
+                           class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;"
+                           title="Edit data transaksi">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
                         <a href="transactions.php?kembalikan=<?= $trans['id_transaksi'] ?>" 
                            class="btn btn-success" style="padding: 6px 12px; font-size: 0.85rem;"
                            onclick="return confirm('Motor sudah dikembalikan?')">

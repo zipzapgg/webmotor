@@ -99,6 +99,12 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
                     <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
                 </div>
                 
+                <div style="text-align: right; margin-bottom: 20px;">
+                    <a href="forgot_password.php" style="color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 500;">
+                        <i class="fas fa-key"></i> Lupa Password?
+                    </a>
+                </div>
+                
                 <button type="submit" class="btn-primary" id="login-btn">
                     <span class="loading-spinner" id="loading-spinner"></span>
                     <span id="btn-text">Login</span>
