@@ -20,6 +20,39 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
 </head>
+
+<!-- LOGOUT JAVASCRIPT HANDLER -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const logoutLink = document.querySelector('.logout-link');
+    
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (confirm('Yakin ingin logout?')) {
+                // Show loading
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+                this.style.pointerEvents = 'none';
+                
+                // Redirect ke logout.php
+                fetch('logout.php', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(() => {
+                    window.location.href = 'login.php';
+                })
+                .catch(() => {
+                    // Force redirect even if error
+                    window.location.href = 'login.php';
+                });
+            }
+        });
+    }
+});
+</script>
+
 <body>
 <nav>
     <div class="nav-container">
