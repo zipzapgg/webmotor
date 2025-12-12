@@ -14,27 +14,57 @@ if ($is_admin) {
         $deskripsi = $_POST['deskripsi'];
         $foto = 'default-motor.jpg';
         
-        if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
-            $upload_result = upload_foto_motor($_FILES['foto']);
-            if ($upload_result['success']) {
-                $foto = $upload_result['filename'];
+        // DEBUG: Cek apakah file di-upload
+        if (isset($_FILES['foto'])) {
+            error_log("File upload info: " . print_r($_FILES['foto'], true));
+            
+            // Cek apakah ada error upload
+            if ($_FILES['foto']['error'] == UPLOAD_ERR_OK) {
+                $upload_result = upload_foto_motor($_FILES['foto']);
+                
+                if ($upload_result['success']) {
+                    $foto = $upload_result['filename'];
+                    set_message('success', '✅ Motor berhasil ditambahkan dengan foto: ' . $foto);
+                } else {
+                    set_message('error', '❌ Motor ditambahkan tapi foto gagal: ' . $upload_result['message']);
+                }
+            } elseif ($_FILES['foto']['error'] == UPLOAD_ERR_NO_FILE) {
+                // Tidak ada file yang di-upload, gunakan default
+                set_message('success', '✅ Motor berhasil ditambahkan dengan foto default (tidak ada file di-upload).');
             } else {
-                set_message('error', $upload_result['message']);
-                redirect('motors.php');
+                // Ada error upload lain
+                $error_messages = [
+                    UPLOAD_ERR_INI_SIZE => 'File terlalu besar (melebihi upload_max_filesize di php.ini)',
+                    UPLOAD_ERR_FORM_SIZE => 'File terlalu besar (melebihi MAX_FILE_SIZE)',
+                    UPLOAD_ERR_PARTIAL => 'File hanya terupload sebagian',
+                    UPLOAD_ERR_NO_TMP_DIR => 'Folder temporary tidak ditemukan',
+                    UPLOAD_ERR_CANT_WRITE => 'Gagal menulis file ke disk',
+                    UPLOAD_ERR_EXTENSION => 'Upload dihentikan oleh extension PHP'
+                ];
+                $error_msg = isset($error_messages[$_FILES['foto']['error']]) 
+                    ? $error_messages[$_FILES['foto']['error']] 
+                    : 'Error tidak dikenal: ' . $_FILES['foto']['error'];
+                
+                set_message('error', '❌ Error upload: ' . $error_msg);
             }
+        } else {
+            set_message('warning', '⚠️ Motor ditambahkan dengan foto default (tidak ada input file).');
         }
         
         $stmt = $conn->prepare("INSERT INTO motor (nama_motor, merk, tahun, plat_nomor, harga_sewa_perhari, foto, deskripsi) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("ssissds", $nama_motor, $merk, $tahun, $plat_nomor, $harga_sewa, $foto, $deskripsi);
         
         if ($stmt->execute()) {
-            set_message('success', '✅ Motor baru berhasil ditambahkan.');
+            if (!isset($_SESSION['flash_message'])) {
+                set_message('success', '✅ Motor baru berhasil ditambahkan dengan foto: ' . $foto);
+            }
         } else {
             set_message('error', '❌ Gagal menambahkan motor. ' . $stmt->error);
         }
         $stmt->close();
         redirect('motors.php');
     }
+    
     if (isset($_GET['delete'])) {
         $id = intval($_GET['delete']);
         
@@ -113,11 +143,28 @@ include 'header.php';
     <div class="card">
         <h2 class="mt-0">Data Motor</h2>
         <p>Kelola semua data motor yang tersedia untuk disewakan.</p>
+        
+        <!-- INFO UPLOAD -->
+        <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(8, 145, 178, 0.1) 100%); 
+                    padding: 16px; border-radius: 12px; border-left: 4px solid #06b6d4; margin-top: 16px;">
+            <h4 style="margin: 0 0 8px 0; color: #06b6d4; font-size: 0.95rem;">
+                <i class="fas fa-info-circle"></i> Info Upload Foto:
+            </h4>
+            <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
+                <li>Format: JPG, PNG, GIF, WebP</li>
+                <li>Ukuran maksimal: 2MB</li>
+                <li>Folder upload: <code>uploads/motors/</code></li>
+                <li>PHP max upload: <strong><?= ini_get('upload_max_filesize') ?></strong></li>
+                <li>PHP post max: <strong><?= ini_get('post_max_size') ?></strong></li>
+            </ul>
+        </div>
     </div>
     
     <div class="card">
         <h3 class="mt-0">Tambah Motor Baru</h3>
-        <form method="POST" action="motors.php" enctype="multipart/form-data">
+        
+        <!-- IMPORTANT: enctype="multipart/form-data" INI WAJIB! -->
+        <form method="POST" action="motors.php" enctype="multipart/form-data" id="addMotorForm">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div class="form-group">
                     <label>Nama Motor</label>
@@ -141,13 +188,35 @@ include 'header.php';
                 </div>
                 <div class="form-group">
                     <label>Foto Motor</label>
-                    <input type="file" name="foto" class="form-control" accept="image/*">
+                    <input type="file" name="foto" id="foto" class="form-control" accept="image/*" onchange="previewImage(this)">
+                    <small style="color: var(--text-secondary); display: block; margin-top: 4px;">
+                        Max 2MB. Format: JPG, PNG, GIF, WebP
+                    </small>
                 </div>
             </div>
+            
+            <!-- PREVIEW FOTO -->
+            <div class="form-group" id="preview-container" style="display: none;">
+                <label>Preview Foto:</label>
+                <div style="position: relative; display: inline-block;">
+                    <img id="preview-image" src="" style="max-width: 300px; height: auto; border-radius: 12px; border: 2px solid var(--border);">
+                    <button type="button" onclick="removePreview()" 
+                            style="position: absolute; top: 8px; right: 8px; background: var(--danger); color: white; 
+                                   border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; 
+                                   font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                        ×
+                    </button>
+                </div>
+                <div style="margin-top: 8px;">
+                    <span id="file-info" style="color: var(--text-secondary); font-size: 0.9rem;"></span>
+                </div>
+            </div>
+            
             <div class="form-group">
                 <label>Deskripsi</label>
                 <textarea name="deskripsi" class="form-control" rows="3"></textarea>
             </div>
+            
             <button type="submit" name="add_motor" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Tambah Motor
             </button>
@@ -177,11 +246,15 @@ include 'header.php';
                     <td>
                         <img src="uploads/motors/<?= htmlspecialchars($row['foto']) ?>" 
                              style="width: 80px; height: 60px; object-fit: cover; border-radius: 8px;"
-                             onerror="this.src='uploads/motors/default-motor.jpg'">
+                             onerror="this.src='uploads/motors/default-motor.jpg'"
+                             title="File: <?= htmlspecialchars($row['foto']) ?>">
                     </td>
                     <td>
                         <strong><?= htmlspecialchars($row['nama_motor']) ?></strong><br>
-                        <small><?= htmlspecialchars($row['merk']) ?> (<?= $row['tahun'] ?>)</small>
+                        <small><?= htmlspecialchars($row['merk']) ?> (<?= $row['tahun'] ?>)</small><br>
+                        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+                            Foto: <?= htmlspecialchars($row['foto']) ?>
+                        </small>
                     </td>
                     <td><?= htmlspecialchars($row['plat_nomor']) ?></td>
                     <td><?= format_rupiah($row['harga_sewa_perhari']) ?></td>
@@ -274,5 +347,67 @@ include 'header.php';
     </div>
 
 <?php endif; ?>
+
+<script>
+// Preview image sebelum upload
+function previewImage(input) {
+    const preview = document.getElementById('preview-image');
+    const container = document.getElementById('preview-container');
+    const fileInfo = document.getElementById('file-info');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validasi ukuran file (2MB = 2097152 bytes)
+        if (file.size > 2097152) {
+            alert('❌ Ukuran file terlalu besar! Maksimal 2MB.\nUkuran file Anda: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB');
+            input.value = '';
+            container.style.display = 'none';
+            return;
+        }
+        
+        // Validasi tipe file
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('❌ Format file tidak valid! Hanya JPG, PNG, GIF, atau WebP.\nFormat Anda: ' + file.type);
+            input.value = '';
+            container.style.display = 'none';
+            return;
+        }
+        
+        // Preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            container.style.display = 'block';
+            
+            // Info file
+            const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
+            fileInfo.innerHTML = `
+                <i class="fas fa-check-circle" style="color: var(--success);"></i> 
+                <strong>${file.name}</strong> (${sizeInMB} MB)
+            `;
+        }
+        reader.readAsDataURL(file);
+    }
+}
+
+function removePreview() {
+    document.getElementById('foto').value = '';
+    document.getElementById('preview-container').style.display = 'none';
+    document.getElementById('preview-image').src = '';
+}
+
+// Validasi sebelum submit
+document.getElementById('addMotorForm').addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('foto');
+    
+    if (fileInput.files.length === 0) {
+        if (!confirm('⚠️ Anda belum memilih foto motor.\n\nMotor akan menggunakan foto default.\n\nLanjutkan?')) {
+            e.preventDefault();
+        }
+    }
+});
+</script>
 
 <?php include 'footer.php'; ?>

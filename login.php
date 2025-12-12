@@ -6,22 +6,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['username'])) {
     
     $username = trim($_POST["username"]);
     $password = trim($_POST["password"]);
+    
+    // Check rate limiting
+    $rate_check = check_rate_limit($_SERVER['REMOTE_ADDR'], 5, 300);
+    if (is_array($rate_check) && !$rate_check['success']) {
+        echo json_encode(['success' => false, 'message' => $rate_check['message']]);
+        exit;
+    }
 
     if (empty($username) || empty($password)) {
         echo json_encode(['success' => false, 'message' => 'Username dan password tidak boleh kosong.']);
         exit;
     }
     
+    // Validate username format
+    if (!validate_username($username)) {
+        echo json_encode(['success' => false, 'message' => 'Format username tidak valid.']);
+        exit;
+    }
+    
+    // Default admin login
     if ($username === 'admin' && $password === 'admin123') {
         $_SESSION["loggedin"] = true;
         $_SESSION["id_user"] = 0;
         $_SESSION["username"] = 'admin';
         $_SESSION["nama_lengkap"] = 'Admin Utama';
         $_SESSION["role"] = 'admin';
+        
+        // Log activity
+        log_activity(0, 'LOGIN', 'Admin login sukses');
+        
+        // Reset rate limit on success
+        unset($_SESSION['rate_limit'][$_SERVER['REMOTE_ADDR']]);
+        
         echo json_encode(['success' => true]);
         exit;
     }
 
+    // Database login
     $sql = "SELECT id_user, username, password, nama_lengkap, role FROM user_admin WHERE username = ?";
     if ($stmt = $conn->prepare($sql)) {
         $stmt->bind_param("s", $username);
@@ -37,13 +59,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['username'])) {
                         $_SESSION["nama_lengkap"] = $nama_lengkap;
                         $_SESSION["role"] = $role;
                         
+                        // Log activity
+                        log_activity($id, 'LOGIN', "User $username_db login sukses");
+                        
+                        // Reset rate limit on success
+                        unset($_SESSION['rate_limit'][$_SERVER['REMOTE_ADDR']]);
+                        
                         echo json_encode(['success' => true]);
                         exit;
                     }
                 }
             }
         }
+        $stmt->close();
     }
+    
+    // Failed login - log it
+    log_activity(0, 'LOGIN_FAILED', "Failed login attempt for username: $username from IP: " . $_SERVER['REMOTE_ADDR']);
     
     echo json_encode(['success' => false, 'message' => 'Username atau password salah.']);
     exit;
@@ -91,12 +123,14 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
             <form id="loginForm" method="post">
                 <div class="form-group">
                     <i class="fas fa-user"></i>
-                    <input type="text" name="username" id="username" class="form-control" placeholder="Username" required>
+                    <input type="text" name="username" id="username" class="form-control" 
+                           placeholder="Username" required maxlength="20" pattern="[a-zA-Z0-9_]{3,20}">
                 </div>
                 
                 <div class="form-group">
                     <i class="fas fa-lock"></i>
-                    <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
+                    <input type="password" name="password" id="password" class="form-control" 
+                           placeholder="Password" required minlength="6">
                 </div>
                 
                 <div style="text-align: right; margin-bottom: 20px;">
@@ -144,7 +178,7 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
                     window.location.href = 'index.php';
                 } else {
                     errorAlert.textContent = data.message;
-                    errorAlert.style.display = 'block';
+                    errorAlert.style.display = 'flex';
                     loginBtn.disabled = false;
                     spinner.style.display = 'none';
                     btnText.textContent = 'Login';
@@ -153,7 +187,7 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
             .catch(error => {
                 console.error('Error:', error);
                 errorAlert.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
-                errorAlert.style.display = 'block';
+                errorAlert.style.display = 'flex';
                 loginBtn.disabled = false;
                 spinner.style.display = 'none';
                 btnText.textContent = 'Login';

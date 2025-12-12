@@ -38,6 +38,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
                     <span class="notif-badge"><?= $unread_notifications ?></span>
                     <?php endif; ?>
                 </a>
+                <a href="reports.php"><i class="fas fa-chart-line"></i> Laporan</a>
                 <a href="users.php"><i class="fas fa-user-cog"></i> Akun</a>
             <?php else: ?>
                 <a href="motors.php"><i class="fas fa-motorcycle"></i> Daftar Motor</a>

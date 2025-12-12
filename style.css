@@ -218,6 +218,9 @@ nav {
     transition: var(--transition);
     box-shadow: 0 4px 15px var(--primary-glow);
     text-decoration: none;
+    
+    position: relative;
+    z-index: 9999;
 }
 
 .logout-link:hover {
