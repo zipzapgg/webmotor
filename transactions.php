@@ -294,6 +294,7 @@ include 'header.php';
                 <td><?= format_rupiah($trans['total_bayar']) ?></td>
                 <td>
                     <div class="form-actions" style="margin: 0;">
+                        <!-- INI YANG DIPERBAIKI: pastikan mengarah ke edit_transaction.php -->
                         <a href="edit_transaction.php?id=<?= $trans['id_transaksi'] ?>" 
                            class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;"
                            title="Edit data transaksi">

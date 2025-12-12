@@ -45,10 +45,10 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
                 <a href="customers.php"><i class="fas fa-user"></i> Profil</a>
             <?php endif; ?>
         </div>
-        <a href="logout.php" class="logout-link">
-            <i class="fas fa-sign-out-alt"></i> 
-            Logout (<?= htmlspecialchars($_SESSION['username'] ?? '') ?>)
-        </a>
+<a href="logout.php" class="logout-link" style="pointer-events: auto !important;">
+    <i class="fas fa-sign-out-alt"></i> 
+    Logout (<?= htmlspecialchars($_SESSION['username'] ?? '') ?>)
+</a>
     </div>
 </nav>
 <div class="container">

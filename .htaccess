@@ -4,17 +4,11 @@ php_value post_max_size 8M
 php_value max_execution_time 300
 php_value max_input_time 300
 
-# Security
+# Security for PHP files
 <FilesMatch "\.(php|php3|php4|php5|phtml)$">
     Order Allow,Deny
     Allow from all
 </FilesMatch>
-
-# Protect uploads folder from PHP execution
-<Directory "uploads">
-    php_flag engine off
-    Options -Indexes
-</Directory>
 
 # Allow image files
 <FilesMatch "\.(jpg|jpeg|png|gif|webp)$">

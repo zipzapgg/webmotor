@@ -923,3 +923,58 @@ footer p {
     background: var(--primary-glow);
     color: var(--primary);
 }
+
+/* ========================================
+   FIX LOGOUT BUTTON - Solusi Klik Issue
+   ======================================== */
+
+/* Override z-index untuk memastikan logout bisa diklik */
+.logout-link {
+    position: relative !important;
+    z-index: 10000 !important;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #FF6B35, #F7931E);
+    color: white !important;
+    border-radius: 12px;
+    font-weight: 700;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* Pastikan nav-container tidak blocking */
+.nav-container {
+    position: relative;
+    z-index: 999;
+}
+
+.nav-links {
+    position: relative;
+    z-index: 998;
+}
+
+/* Hover effect yang lebih responsive */
+.logout-link:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4) !important;
+    background: linear-gradient(135deg, #E85A2A, #E8841E) !important;
+}
+
+.logout-link:active {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3) !important;
+}
+
+/* Fix untuk mobile */
+@media (max-width: 768px) {
+    .logout-link {
+        width: 100%;
+        justify-content: center;
+        margin-top: 8px;
+    }
+}
